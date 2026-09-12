@@ -5,12 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Saída de Equipamentos</title>
   
-  <!-- Ícone de Equipamento na Aba (Favicon) -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc2626'><path d='M20 18c1.1 0 1.99-.9 1.99-2L22 5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 5h16v11H4V5z'/></svg>">
 
-  <!-- Supabase JS Client -->
-  <!-- Script atualizado da biblioteca Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
   
   <style>
     :root {
@@ -31,8 +28,46 @@
     }
 
     .container {
-      max-width: 1000px;
+      max-width: 1050px;
       margin: 0 auto;
+    }
+
+    /* Tela de Login */
+    #loginScreen {
+      max-width: 380px;
+      margin: 80px auto;
+    }
+
+    .login-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      border: 1px solid var(--border);
+    }
+
+    .login-card h2 {
+      margin-bottom: 20px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .btn-logout {
+      background-color: #4b5563;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-logout:hover {
+      background-color: #1f2937;
     }
 
     .header-title {
@@ -89,6 +124,7 @@
     .form-group {
       display: flex;
       flex-direction: column;
+      margin-bottom: 12px;
     }
 
     .form-group label {
@@ -112,6 +148,7 @@
     }
 
     .btn-submit {
+      width: 100%;
       grid-column: 1 / -1;
       background-color: var(--primary);
       color: white;
@@ -126,6 +163,22 @@
 
     .btn-submit:hover {
       background-color: var(--primary-hover);
+    }
+
+    .btn-cancel {
+      grid-column: 1 / -1;
+      background-color: #6b7280;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      display: none;
+    }
+
+    .btn-cancel:hover {
+      background-color: #4b5563;
     }
 
     .stats-grid {
@@ -200,6 +253,34 @@
       background-color: #166534;
     }
 
+    .btn-action {
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.8rem;
+      margin-right: 4px;
+    }
+
+    .btn-edit {
+      background-color: #eab308;
+      color: #fff;
+    }
+
+    .btn-edit:hover {
+      background-color: #ca8a04;
+    }
+
+    .btn-delete {
+      background-color: #ef4444;
+      color: #fff;
+    }
+
+    .btn-delete:hover {
+      background-color: #dc2626;
+    }
+
     .error-box {
       background-color: #fee2e2;
       color: #991b1b;
@@ -231,8 +312,32 @@
 </head>
 <body>
 
-  <div class="container">
+  <!-- TELA DE LOGIN -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <h2>Acesso ao Sistema</h2>
+      <div id="loginErrorAlert" class="error-box"></div>
+      <form id="formLogin">
+        <div class="form-group">
+          <label for="loginUsername">Usuário</label>
+          <input type="text" id="loginUsername" placeholder="Digite seu usuário" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Senha</label>
+          <input type="password" id="loginPassword" placeholder="******" required>
+        </div>
+        <button type="submit" class="btn-submit">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL DEPOIS DO LOGIN -->
+  <div class="container" id="appContent" style="display: none;">
     
+    <div class="top-bar no-print">
+      <button class="btn-logout" onclick="fazerLogout()">🔒 Sair do Sistema</button>
+    </div>
+
     <div class="header-title">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
         <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 5h16v11H4V5z"/>
@@ -240,26 +345,19 @@
       <h1>Controle de Saída de Equipamentos</h1>
     </div>
 
-    <!-- Caixa de Erro Dinâmica -->
     <div id="errorAlert" class="error-box"></div>
 
     <!-- Formulário -->
     <div class="card no-print">
-      <h2>Novo Registro</h2>
+      <h2 id="formTitle">Novo Registro</h2>
       <form id="formSaida">
+        <input type="hidden" id="registroId">
+        
         <div class="form-grid">
-          
           <div class="form-group">
             <label for="equipamento">Equipamento</label>
             <select id="equipamento" required>
-              <option value="">Selecione...</option>
-              <option value="Headset">Headset</option>
-              <option value="Teclado">Teclado</option>
-              <option value="Mouse">Mouse</option>
-              <option value="Monitor">Monitor</option>
-              <option value="Webcam">Webcam</option>
-              <option value="Cabo/Adaptador">Cabo / Adaptador</option>
-              <option value="Outro">Outro</option>
+              <option value="Headset" selected>Headset</option>
             </select>
           </div>
 
@@ -267,12 +365,12 @@
             <label for="setor">Setor de Destino</label>
             <select id="setor" required>
               <option value="">Selecione...</option>
-              <option value="Oi">OI</option>
-              <option value="Vivo">VIVO</option>
-              <option value="Tim">TIM</option>
-              <option value="Claro">CLARO</option>
-              <option value="Sac">SAC</option>
-              <option value="Senat">SENAT</option>
+              <option value="MOURA">MOURA</option>
+              <option value="LIGMINAS">LIGMINAS</option>
+              <option value="ME">ME</option>
+              <option value="SEST/SENAT">SEST/SENAT</option>
+              <option value="SEFAZ">SEFAZ</option>
+              <option value="SENAT">SENAT</option>
             </select>
           </div>
 
@@ -282,8 +380,8 @@
           </div>
 
           <div class="form-group">
-            <label for="responsavel">Nome do Responsável</label>
-            <input type="text" id="responsavel" placeholder="Nome de quem recebeu" required>
+            <label for="responsavel">Nome do Responsável (Opcional)</label>
+            <input type="text" id="responsavel" placeholder="Nome de quem recebeu (opcional)">
           </div>
 
           <div class="form-group">
@@ -301,7 +399,8 @@
             <input type="text" id="horaRegistro" readonly placeholder="Gerado automaticamente" style="background-color: #f3f4f6;">
           </div>
 
-          <button type="submit" class="btn-submit">Registrar Saída</button>
+          <button type="submit" id="btnSubmit" class="btn-submit">Registrar Saída</button>
+          <button type="button" id="btnCancel" class="btn-cancel" onclick="cancelarEdicao()">Cancelar Edição</button>
         </div>
       </form>
     </div>
@@ -326,6 +425,7 @@
             <th>Chamado</th>
             <th>Data</th>
             <th>Hora</th>
+            <th class="no-print">Ações</th>
           </tr>
         </thead>
         <tbody id="tabelaRegistros"></tbody>
@@ -334,53 +434,110 @@
   </div>
 
   <script>
-    const SUPABASE_URL = "https://numxuxojslnujpsmrdwp.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bXh1eG9qc2xudWpwc21yZHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMTk5ODUsImV4cCI6MjEwNDc5NTk4NX0.x9hi6BUpQY1UVPUQElaQGg2sE8H__IRqIy8OD0f2ShQ";
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const SUPABASE_URL = "https://numxuxojslnujpsmrdwp.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bXh1eG9qc2xudWpwc21yZHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMTk5ODUsImV4cCI6MjEwNDc5NTk4NX0.x9hi6BUpQY1UVPUQElaQGg2sE8H__IRqIy8OD0f2ShQ";
+  const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const setoresValidos = ["Oi", "Vivo", "Tim", "Claro", "Sac", "Senat"];
+  const setoresValidos = ["MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "SENAT"];
+  let registrosCache = [];
 
-    const inputData = document.getElementById("dataRegistro");
-    const inputHora = document.getElementById("horaRegistro");
+  const inputData = document.getElementById("dataRegistro");
+  const inputHora = document.getElementById("horaRegistro");
 
-    function atualizarHoraAtual() {
-      const agora = new Date();
-      inputHora.value = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  // VERIFICA SE O USUÁRIO JÁ ESTÁ LOGADO
+  async function verificarSessao() {
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (session) {
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("appContent").style.display = "block";
+      carregarDados();
+    } else {
+      document.getElementById("loginScreen").style.display = "block";
+      document.getElementById("appContent").style.display = "none";
     }
+  }
 
-    inputData.valueAsDate = new Date();
-    atualizarHoraAtual();
+  // EVENTO DE LOGIN
+  document.getElementById("formLogin").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("loginUsername").value.trim().toLowerCase();
+    const password = document.getElementById("loginPassword").value;
+    const errDiv = document.getElementById("loginErrorAlert");
+    errDiv.style.display = "none";
 
-    inputData.addEventListener('change', atualizarHoraAtual);
+    // Transforma o nome digitado em um email válido para o Supabase
+    const emailFalso = `${username}@sistema.com`;
 
-    function mostrarErro(mensagem) {
-      const errDiv = document.getElementById("errorAlert");
+    const { data, error } = await _supabase.auth.signInWithPassword({ 
+      email: emailFalso, 
+      password: password 
+    });
+
+    if (error) {
       errDiv.style.display = "block";
-      errDiv.innerText = mensagem;
+      errDiv.innerText = "Usuário ou senha incorretos.";
+    } else {
+      verificarSessao();
     }
+  });
 
-    document.getElementById("formSaida").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      document.getElementById("errorAlert").style.display = "none";
+  async function fazerLogout() {
+    await _supabase.auth.signOut();
+    verificarSessao();
+  }
 
-      const dados = {
-        equipamento: document.getElementById("equipamento").value,
-        setor: document.getElementById("setor").value,
-        lacre: document.getElementById("lacre").value,
-        responsavel: document.getElementById("responsavel").value,
-        chamado: document.getElementById("chamado").value,
-        data_registro: document.getElementById("dataRegistro").value,
-        hora_registro: document.getElementById("horaRegistro").value
-      };
+  function atualizarHoraAtual() {
+    const agora = new Date();
+    inputHora.value = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
 
+  inputData.valueAsDate = new Date();
+  atualizarHoraAtual();
+  inputData.addEventListener('change', atualizarHoraAtual);
+
+  function mostrarErro(mensagem) {
+    const errDiv = document.getElementById("errorAlert");
+    errDiv.style.display = "block";
+    errDiv.innerText = mensagem;
+  }
+
+  document.getElementById("formSaida").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    document.getElementById("errorAlert").style.display = "none";
+
+    const registroId = document.getElementById("registroId").value;
+    const respValue = document.getElementById("responsavel").value.trim();
+
+    const dados = {
+      equipamento: document.getElementById("equipamento").value,
+      setor: document.getElementById("setor").value,
+      lacre: document.getElementById("lacre").value,
+      responsavel: respValue !== "" ? respValue : "-",
+      chamado: document.getElementById("chamado").value,
+      data_registro: document.getElementById("dataRegistro").value,
+      hora_registro: document.getElementById("horaRegistro").value
+    };
+
+    if (registroId) {
+      const { data, error } = await _supabase
+        .from('saidas_equipamentos')
+        .update(dados)
+        .eq('id', registroId);
+
+      if (error) {
+        mostrarErro("Erro ao editar: " + error.message);
+      } else {
+        alert("Registro atualizado com sucesso!");
+        cancelarEdicao();
+        carregarDados();
+      }
+    } else {
       const { data, error } = await _supabase
         .from('saidas_equipamentos')
         .insert([dados]);
 
       if (error) {
-        alert("Erro ao salvar no banco de dados: " + error.message);
         mostrarErro("Erro de gravação: " + error.message);
-        console.error(error);
       } else {
         alert("Saída de equipamento registrada com sucesso!");
         document.getElementById("formSaida").reset();
@@ -388,79 +545,146 @@
         atualizarHoraAtual();
         carregarDados();
       }
+    }
+  });
+
+  async function carregarDados() {
+    const { data, error } = await _supabase
+      .from('saidas_equipamentos')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      mostrarErro("Erro ao carregar registros: " + error.message);
+      return;
+    }
+
+    registrosCache = data || [];
+    renderizarTabela(registrosCache);
+    renderizarEstatisticas(registrosCache);
+  }
+
+  function renderizarTabela(registros) {
+    const tbody = document.getElementById("tabelaRegistros");
+    tbody.innerHTML = "";
+
+    if (!registros || registros.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='8' style='text-align:center;'>Nenhum registro encontrado.</td></tr>";
+      return;
+    }
+
+    registros.forEach(item => {
+      const tr = document.createElement("tr");
+      const itemId = item.id;
+      const eq = item.equipamento || 'Headset';
+      const set = item.setor || '-';
+      const lac = item.lacre || '-';
+      const resp = item.responsavel || '-';
+      const cham = item.chamado || '-';
+      const dt = item.data_registro || '-';
+      const hr = item.hora_registro || '-';
+
+      tr.innerHTML = `
+        <td><strong>${eq}</strong></td>
+        <td>${set}</td>
+        <td>${lac}</td>
+        <td>${resp}</td>
+        <td>${cham}</td>
+        <td>${dt}</td>
+        <td>${hr}</td>
+        <td class="no-print">
+          <button class="btn-action btn-edit" onclick="prepararEdicao('${itemId}')">Editar</button>
+          <button class="btn-action btn-delete" onclick="excluirRegistro('${itemId}')">Excluir</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function prepararEdicao(id) {
+    const item = registrosCache.find(r => String(r.id) === String(id));
+    if (!item) return;
+
+    document.getElementById("registroId").value = item.id;
+    document.getElementById("equipamento").value = item.equipamento;
+    document.getElementById("setor").value = item.setor;
+    document.getElementById("lacre").value = item.lacre;
+    document.getElementById("responsavel").value = item.responsavel === '-' ? '' : item.responsavel;
+    document.getElementById("chamado").value = item.chamado;
+    document.getElementById("dataRegistro").value = item.data_registro;
+    document.getElementById("horaRegistro").value = item.hora_registro;
+
+    document.getElementById("formTitle").innerText = "Editar Registro";
+    document.getElementById("btnSubmit").innerText = "Salvar Alterações";
+    document.getElementById("btnCancel").style.display = "block";
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function cancelarEdicao() {
+    document.getElementById("registroId").value = "";
+    document.getElementById("formSaida").reset();
+    document.getElementById("formTitle").innerText = "Novo Registro";
+    document.getElementById("btnSubmit").innerText = "Registrar Saída";
+    document.getElementById("btnCancel").style.display = "none";
+    inputData.valueAsDate = new Date();
+    atualizarHoraAtual();
+  }
+
+  async function excluirRegistro(id) {
+    if (!confirm("Tem certeza que deseja excluir este registro?")) return;
+
+    const { error } = await _supabase
+      .from('saidas_equipamentos')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      mostrarErro("Erro ao excluir registro: " + error.message);
+    } else {
+      carregarDados();
+    }
+  }
+
+  function renderizarEstatisticas(registros) {
+    const container = document.getElementById("statsContainer");
+    container.innerHTML = "";
+
+    const total = registros.length;
+    const contagem = {};
+
+    setoresValidos.forEach(s => contagem[s] = 0);
+
+    registros.forEach(r => {
+      const setorRegistro = (r.setor || '').trim().toUpperCase();
+      const chaveEncontrada = setoresValidos.find(s => s === setorRegistro);
+      if (chaveEncontrada) {
+        contagem[chaveEncontrada]++;
+      } else {
+        if (!contagem[setorRegistro]) contagem[setorRegistro] = 0;
+        contagem[setorRegistro]++;
+      }
     });
 
-    async function carregarDados() {
-      const { data, error } = await _supabase
-        .from('saidas_equipamentos')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const listaSetores = Array.from(new Set([...setoresValidos, ...Object.keys(contagem)]));
 
-      if (error) {
-        mostrarErro("Erro ao carregar dados do Supabase: " + error.message);
-        console.error(error);
-        return;
-      }
+    listaSetores.forEach(setor => {
+      const qtd = contagem[setor] || 0;
+      const pct = total > 0 ? ((qtd / total) * 100).toFixed(1) : "0.0";
 
-      renderizarTabela(data || []);
-      renderizarEstatisticas(data || []);
-    }
+      const card = document.createElement("div");
+      card.className = "stat-card";
+      card.innerHTML = `
+        <h4>${setor}</h4>
+        <div class="val">${qtd}</div>
+        <div class="pct">${pct}% do total</div>
+      `;
+      container.appendChild(card);
+    });
+  }
 
-    function renderizarTabela(registros) {
-      const tbody = document.getElementById("tabelaRegistros");
-      tbody.innerHTML = "";
-
-      if (registros.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='7' style='text-align:center;'>Nenhum registro encontrado.</td></tr>";
-        return;
-      }
-
-      registros.forEach(item => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><strong>${item.equipamento || 'N/A'}</strong></td>
-          <td>${item.setor}</td>
-          <td>${item.lacre}</td>
-          <td>${item.responsavel}</td>
-          <td>${item.chamado}</td>
-          <td>${item.data_registro}</td>
-          <td>${item.hora_registro}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function renderizarEstatisticas(registros) {
-      const container = document.getElementById("statsContainer");
-      container.innerHTML = "";
-
-      const total = registros.length;
-      const contagem = {};
-      setoresValidos.forEach(s => contagem[s] = 0);
-
-      registros.forEach(r => {
-        const setorEncontrado = setoresValidos.find(s => s.toLowerCase() === (r.setor || '').toLowerCase());
-        if (setorEncontrado) {
-          contagem[setorEncontrado]++;
-        }
-      });
-
-      setoresValidos.forEach(setor => {
-        const qtd = contagem[setor];
-        const pct = total > 0 ? ((qtd / total) * 100).toFixed(1) : "0.0";
-
-        const card = document.createElement("div");
-        card.className = "stat-card";
-        card.innerHTML = `
-          <h4>${setor}</h4>
-          <div class="val">${qtd}</div>
-          <div class="pct">${pct}% do total</div>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    carregarDados();
-  </script>
+  // Executa ao abrir a página
+  verificarSessao();
+</script>
 </body>
 </html>
