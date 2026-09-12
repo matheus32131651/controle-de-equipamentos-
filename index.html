@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Saída de Headsets</title>
+  
+  <!-- Ícone de Headset na Aba do Navegador (Favicon) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc2626'><path d='M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z'/></svg>">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <style>
+    :root {
+      --primary: #dc2626; /* Vermelho Principal */
+      --primary-hover: #b91c1c; /* Vermelho Escuro (Hover) */
+      --bg: #fef2f2; /* Fundo Levemente Rosado/Claro */
+      --card-bg: #ffffff; /* Fundo Branco nos Cards */
+      --text: #1f2937;
+      --border: #fca5a5; /* Borda Suave em Tom de Vermelho */
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* Cabeçalho com Ícone e Título */
+    .header-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 8px;
+      border: 2px solid var(--primary);
+      box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1);
+    }
+
+    .header-title svg {
+      width: 40px;
+      height: 40px;
+      fill: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .header-title h1 {
+      margin: 0;
+      color: var(--primary);
+      font-size: 1.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    h2 {
+      text-align: center;
+      color: var(--primary);
+      margin-top: 0;
+      border-bottom: 2px solid var(--bg);
+      padding-bottom: 8px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #7f1d1d;
+    }
+
+    .form-group input, .form-group select {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+    }
+
+    .btn-submit {
+      grid-column: 1 / -1;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+
+    .btn-submit:hover {
+      background-color: var(--primary-hover);
+    }
+
+    /* Dashboard e Estatísticas */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: #fff5f5;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat-card h4 {
+      margin: 0;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      color: #991b1b;
+    }
+
+    .stat-card .val {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: var(--primary);
+      margin: 6px 0 2px 0;
+    }
+
+    .stat-card .pct {
+      font-size: 0.8rem;
+      color: #7f1d1d;
+      font-weight: 500;
+    }
+
+    /* Tabela */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #fff5f5;
+    }
+
+    .btn-print {
+      background-color: #15803d;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      float: right;
+      margin-bottom: 12px;
+    }
+
+    .btn-print:hover {
+      background-color: #166534;
+    }
+
+    /* Ocultar elementos desnecessários na impressão */
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      body {
+        background: white;
+        padding: 0;
+      }
+      .card {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+      }
+      th {
+        background-color: #333 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Cabeçalho com Ícone de Headset -->
+    <div class="header-title">
+      <!-- SVG do Headset no canto esquerdo -->
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2c0-3.87 3.13-7 7-7s7 3.13 7 7v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z"/>
+      </svg>
+      <h1>Controle de Saída de Headsets</h1>
+    </div>
+
+    <!-- Formulário de Registro -->
+    <div class="card no-print">
+      <h2>Novo Registro</h2>
+      <form id="formSaida">
+        <div class="form-grid">
+          
+          <div class="form-group">
+            <label for="setor">Setor de Destino</label>
+            <select id="setor" required>
+              <option value="">Selecione...</option>
+              <option value="Oi">OI</option>
+              <option value="Vivo">VIVO</option>
+              <option value="Tim">TIM</option>
+              <option value="Claro">CLARO</option>
+              <option value="Sac">SAC</option>
+              <option value="Senat">SENAT</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="lacre">Nº do Lacre</label>
+            <input type="text" id="lacre" placeholder="Ex: L12345" required>
+          </div>
+
+          <div class="form-group">
+            <label for="responsavel">Nome do Responsável</label>
+            <input type="text" id="responsavel" placeholder="Nome de quem recebeu" required>
+          </div>
+
+          <div class="form-group">
+            <label for="chamado">Nº do Chamado</label>
+            <input type="text" id="chamado" placeholder="Ex: CH98765" required>
+          </div>
+
+          <div class="form-group">
+            <label for="dataRegistro">Data do Registro</label>
+            <input type="date" id="dataRegistro" required>
+          </div>
+
+          <div class="form-group">
+            <label for="horaRegistro">Horário do Registro</label>
+            <input type="text" id="horaRegistro" readonly placeholder="Gerado automaticamente" style="background-color: #f3f4f6;">
+          </div>
+
+          <button type="submit" class="btn-submit">Registrar Saída</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Indicadores / Porcentagens por Setor -->
+    <div class="card">
+      <h2>Estatísticas por Setor</h2>
+      <div class="stats-grid" id="statsContainer">
+        <!-- Renderizado dinamicamente pelo JS -->
+      </div>
+    </div>
+
+    <!-- Tabela de Saídas -->
+    <div class="card">
+      <button class="btn-print no-print" onclick="window.print()">🖨️ Imprimir Relatório</button>
+      <h2>Histórico de Registros</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Setor</th>
+            <th>Lacre</th>
+            <th>Responsável</th>
+            <th>Chamado</th>
+            <th>Data</th>
+            <th>Hora</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaRegistros">
+          <!-- Renderizado dinamicamente pelo JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // Configuração do Supabase
+    const SUPABASE_URL = "https://ijzjrpdwbqarurnfdmpf.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_1Jq9M9jRiR_2I2ndxq5stg_R3gT4DBb";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const setoresValidos = ["Oi", "Vivo", "Tim", "Claro", "Sac", "Senat"];
+
+    const inputData = document.getElementById("dataRegistro");
+    const inputHora = document.getElementById("horaRegistro");
+
+    function atualizarHoraAtual() {
+      const agora = new Date();
+      inputHora.value = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    inputData.valueAsDate = new Date();
+    atualizarHoraAtual();
+
+    inputData.addEventListener('change', () => {
+      atualizarHoraAtual();
+    });
+
+    // Submissão do Formulário
+    document.getElementById("formSaida").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const dados = {
+        setor: document.getElementById("setor").value,
+        lacre: document.getElementById("lacre").value,
+        responsavel: document.getElementById("responsavel").value,
+        chamado: document.getElementById("chamado").value,
+        data_registro: document.getElementById("dataRegistro").value,
+        hora_registro: document.getElementById("horaRegistro").value
+      };
+
+      const { data, error } = await _supabase
+        .from('saidas_equipamentos')
+        .insert([dados]);
+
+      if (error) {
+        alert("Erro ao salvar no banco de dados: " + error.message);
+        console.error(error);
+      } else {
+        alert("Saída de Headset registrada com sucesso!");
+        document.getElementById("formSaida").reset();
+        inputData.valueAsDate = new Date();
+        atualizarHoraAtual();
+        carregarDados();
+      }
+    });
+
+    // Carregar e Exibir Dados do Supabase
+    async function carregarDados() {
+      const { data, error } = await _supabase
+        .from('saidas_equipamentos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Erro ao carregar registros:", error);
+        return;
+      }
+
+      renderizarTabela(data);
+      renderizarEstatisticas(data);
+    }
+
+    function renderizarTabela(registros) {
+      const tbody = document.getElementById("tabelaRegistros");
+      tbody.innerHTML = "";
+
+      registros.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${item.setor}</strong></td>
+          <td>${item.lacre}</td>
+          <td>${item.responsavel}</td>
+          <td>${item.chamado}</td>
+          <td>${item.data_registro}</td>
+          <td>${item.hora_registro}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderizarEstatisticas(registros) {
+      const container = document.getElementById("statsContainer");
+      container.innerHTML = "";
+
+      const totalHeadsets = registros.length;
+      
+      const contagem = {};
+      setoresValidos.forEach(s => contagem[s] = 0);
+
+      registros.forEach(r => {
+        if (contagem[r.setor] !== undefined) {
+          contagem[r.setor]++;
+        }
+      });
+
+      setoresValidos.forEach(setor => {
+        const qtd = contagem[setor];
+        const pct = totalHeadsets > 0 ? ((qtd / totalHeadsets) * 100).toFixed(1) : "0.0";
+
+        const card = document.createElement("div");
+        card.className = "stat-card";
+        card.innerHTML = `
+          <h4>${setor}</h4>
+          <div class="val">${qtd}</div>
+          <div class="pct">${pct}% do total</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    carregarDados();
+  </script>
+</body>
+</html>
