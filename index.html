@@ -470,6 +470,11 @@
     }
   }
 
+  // Ouvinte em tempo real para mudanças na autenticação
+  _supabase.auth.onAuthStateChange((event, session) => {
+    verificarSessao();
+  });
+
   document.getElementById("formLogin").addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("loginEmail").value;
@@ -482,14 +487,11 @@
     if (error) {
       errDiv.style.display = "block";
       errDiv.innerText = "Falha no login: " + error.message;
-    } else {
-      verificarSessao();
     }
   });
 
   async function fazerLogout() {
     await _supabase.auth.signOut();
-    verificarSessao();
   }
 
   function atualizarHoraAtual() {
@@ -784,7 +786,10 @@
     doc.save(`registros_saida_${prefixoAnoMes}.pdf`);
   }
 
-  verificarSessao();
-</script>
+  // Inicializa o carregamento da sessão de forma segura
+  document.addEventListener("DOMContentLoaded", () => {
+    verificarSessao();
+  });
+  </script>
 </body>
 </html>
