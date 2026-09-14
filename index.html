@@ -387,6 +387,7 @@
               <option value="IPSEMG">IPSEMG</option>
               <option value="RH">RH</option>
               <option value="RH">DETRAN</option>
+              <option value="SEBRAE BA">SEBRAE BA</option>
             
             </select>
           </div>
@@ -457,7 +458,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bXh1eG9qc2xudWpwc21yZHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMTk5ODUsImV4cCI6MjEwNDc5NTk4NX0.x9hi6BUpQY1UVPUQElaQGg2sE8H__IRqIy8OD0f2ShQ";
   const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const setoresValidos = ["MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "EMLUB/DEFESA CIVIL", "C. DO VALE ", "IPSEMG", "DETRAN", "RH" ];
+  const setoresValidos = ["MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "EMLUB/DEFESA CIVIL", "C. DO VALE ", "IPSEMG", "DETRAN", "RH", "SEBRAE BA" ];
   let registrosCache = [];
 
   const inputData = document.getElementById("dataRegistro");
