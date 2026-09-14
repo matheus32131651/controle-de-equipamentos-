@@ -381,8 +381,14 @@
               <option value="LIGMINAS">LIGMINAS</option>
               <option value="ME">ME</option>
               <option value="SEST/SENAT">SEST/SENAT</option>
-              <option value="SEFAZ">SEFAZ</option>
-              <option value="SENAT">SENAT</option>
+              <option value="SEST/SEFAZ">SEFAZ</option>
+              <option value="EMLUB/DEFESA CIVIL">SENAT</option>
+              <option value="C.DO VALE">C. DO VALE</option>
+              <option value="EMLUB">EMLURB</option>
+              <option value="D.CIVIL">D.CIVIL</option>
+              <option value="IPSEMG">IPSEMG</option>
+              <option value="RH">RH</option>
+            
             </select>
           </div>
 
@@ -452,7 +458,7 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bXh1eG9qc2xudWpwc21yZHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMTk5ODUsImV4cCI6MjEwNDc5NTk4NX0.x9hi6BUpQY1UVPUQElaQGg2sE8H__IRqIy8OD0f2ShQ";
   const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const setoresValidos = ["MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "SENAT"];
+  const setoresValidos = ["MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "SEST/SENAT", "EMLUB/DEFESA CIVIL", "C. DO VALE / EMLURB / D. CIVIL", "IPSEMG", "DETRAN", "RH" ];
   let registrosCache = [];
 
   const inputData = document.getElementById("dataRegistro");
@@ -470,11 +476,6 @@
     }
   }
 
-  // Ouvinte em tempo real para mudanças na autenticação
-  _supabase.auth.onAuthStateChange((event, session) => {
-    verificarSessao();
-  });
-
   document.getElementById("formLogin").addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("loginEmail").value;
@@ -487,11 +488,14 @@
     if (error) {
       errDiv.style.display = "block";
       errDiv.innerText = "Falha no login: " + error.message;
+    } else {
+      verificarSessao();
     }
   });
 
   async function fazerLogout() {
     await _supabase.auth.signOut();
+    verificarSessao();
   }
 
   function atualizarHoraAtual() {
@@ -786,10 +790,7 @@
     doc.save(`registros_saida_${prefixoAnoMes}.pdf`);
   }
 
-  // Inicializa o carregamento da sessão de forma segura
-  document.addEventListener("DOMContentLoaded", () => {
-    verificarSessao();
-  });
-  </script>
+  verificarSessao();
+</script>
 </body>
 </html>
