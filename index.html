@@ -272,14 +272,32 @@
       background-color: #b91c1c;
     }
 
+    /* ESTILOS DE LARGURA E VISIBILIDADE DAS AÇÕES E CHECKBOX */
+    th.col-acoes, td.col-acoes {
+      width: 110px !important;
+      text-align: center;
+    }
+
+    th.col-check, td.col-check {
+      width: 45px !important;
+      text-align: center;
+    }
+
+    .actions-cell {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
     .btn-action {
       border: none;
       padding: 6px 10px;
       border-radius: 4px;
       cursor: pointer;
       font-weight: bold;
-      font-size: 0.8rem;
-      margin-right: 4px;
+      font-size: 0.85rem;
     }
 
     .btn-edit {
@@ -291,13 +309,40 @@
       background-color: #ca8a04;
     }
 
-    .btn-delete {
+    .btn-delete-icon {
       background-color: #ef4444;
       color: #fff;
+      padding: 6px 8px;
+      font-size: 0.9rem;
     }
 
-    .btn-delete:hover {
+    .btn-delete-icon:hover {
       background-color: #dc2626;
+    }
+
+    .bulk-actions-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background-color: #fee2e2;
+      border: 1px solid #fca5a5;
+      padding: 10px 16px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }
+
+    .bulk-actions-bar span {
+      font-weight: bold;
+      color: #991b1b;
+    }
+
+    .custom-checkbox {
+      width: 20px !important;
+      height: 20px !important;
+      cursor: pointer;
+      display: inline-block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
 
     .error-box {
@@ -451,6 +496,12 @@
         <button class="btn-export-pdf" onclick="exportarPDF()">📄 Exportar Relatório (PDF)</button>
       </div>
 
+      <!-- PAINEL DE EXCLUSÃO EM MASSA -->
+      <div id="bulkActionsBar" class="bulk-actions-bar no-print">
+        <span id="selectedCountText">0 itens selecionados</span>
+        <button class="btn-action btn-delete-icon" onclick="excluirSelecionados()" style="padding: 8px 12px;">🗑️ Excluir Selecionados</button>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -461,7 +512,10 @@
             <th>Chamado</th>
             <th>Data</th>
             <th>Hora</th>
-            <th class="no-print">Ações</th>
+            <th class="no-print col-acoes">Ações</th>
+            <th class="no-print col-check">
+              <input type="checkbox" id="selectAll" class="custom-checkbox" onclick="alternarTodosCheckbox(this)" title="Selecionar Todos">
+            </th>
           </tr>
         </thead>
         <tbody id="tabelaRegistros"></tbody>
@@ -598,9 +652,11 @@
   function renderizarTabela(registros) {
     const tbody = document.getElementById("tabelaRegistros");
     tbody.innerHTML = "";
+    document.getElementById("selectAll").checked = false;
+    atualizarBarraSelecao();
 
     if (!registros || registros.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='8' style='text-align:center;'>Nenhum registro encontrado.</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='9' style='text-align:center;'>Nenhum registro encontrado.</td></tr>";
       return;
     }
 
@@ -623,13 +679,59 @@
         <td>${cham}</td>
         <td>${dt}</td>
         <td>${hr}</td>
-        <td class="no-print">
-          <button class="btn-action btn-edit" onclick="prepararEdicao('${itemId}')">Editar</button>
-          <button class="btn-action btn-delete" onclick="excluirRegistro('${itemId}')">Excluir</button>
+        <td class="no-print col-acoes">
+          <div class="actions-cell">
+            <button class="btn-action btn-edit" onclick="prepararEdicao('${itemId}')">Editar</button>
+            <button class="btn-action btn-delete-icon" onclick="excluirRegistro('${itemId}')" title="Excluir">🗑️</button>
+          </div>
+        </td>
+        <td class="no-print col-check">
+          <input type="checkbox" class="row-checkbox custom-checkbox" value="${itemId}" onclick="atualizarBarraSelecao()">
         </td>
       `;
       tbody.appendChild(tr);
     });
+  }
+
+  // GERENCIAMENTO DA SELEÇÃO MÚLTIPLA
+  function alternarTodosCheckbox(source) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = source.checked);
+    atualizarBarraSelecao();
+  }
+
+  function atualizarBarraSelecao() {
+    const selecionados = document.querySelectorAll('.row-checkbox:checked');
+    const bulkBar = document.getElementById("bulkActionsBar");
+    const countText = document.getElementById("selectedCountText");
+
+    if (selecionados.length > 0) {
+      bulkBar.style.display = "flex";
+      countText.innerText = `${selecionados.length} registro(s) selecionado(s)`;
+    } else {
+      bulkBar.style.display = "none";
+    }
+  }
+
+  async function excluirSelecionados() {
+    const selecionados = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    
+    if (selecionados.length === 0) return;
+
+    if (!confirm(`Tem certeza que deseja excluir os ${selecionados.length} registros selecionados?`)) {
+      return;
+    }
+
+    const { error } = await _supabase
+      .from('saidas_equipamentos')
+      .delete()
+      .in('id', selecionados);
+
+    if (error) {
+      mostrarErro("Erro ao excluir registros selecionados: " + error.message);
+    } else {
+      carregarDados();
+    }
   }
 
   function prepararEdicao(id) {
@@ -714,7 +816,6 @@
     });
   }
 
-  // EXPORTAR REGISTROS DE QUALQUER PERÍODO EM PDF
   function exportarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -741,7 +842,6 @@
       return;
     }
 
-    // Título do PDF
     doc.setFontSize(16);
     doc.setTextColor(220, 38, 38);
     doc.text("Controle de Saída de Equipamentos", 14, 18);
@@ -750,7 +850,6 @@
     doc.setTextColor(100);
     doc.text(textoSubtitulo, 14, 25);
 
-    // Cálculos de Estatísticas do Período
     const totalPeriodo = registrosFiltrados.length;
     const contagemPeriodo = {};
     setoresValidos.forEach(s => contagemPeriodo[s] = 0);
@@ -775,10 +874,8 @@
       return [setor, qtd.toString(), `${pct}%`];
     });
 
-    // Linha de total geral
     linhasStats.push(["TOTAL GERAL", totalPeriodo.toString(), "100%"]);
 
-    // Tabela 1: Resumo Estatístico por Setor
     doc.setFontSize(12);
     doc.setTextColor(31, 41, 55);
     doc.text("Resumo de Operações por Setor", 14, 34);
@@ -792,7 +889,6 @@
       styles: { fontSize: 8, cellPadding: 2 }
     });
 
-    // Tabela 2: Histórico Detalhado dos Registros
     const finalYStats = doc.lastAutoTable.finalY + 10;
     doc.text("Detalhamento dos Registros", 14, finalYStats);
 
