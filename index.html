@@ -92,13 +92,6 @@
       width: auto;
     }
 
-    .header-title svg {
-      width: 40px;
-      height: 40px;
-      fill: var(--primary);
-      flex-shrink: 0;
-    }
-
     .header-title h1 {
       margin: 0;
       color: var(--primary);
@@ -246,11 +239,22 @@
       background-color: #fff5f5;
     }
 
-    .table-actions {
+    .pdf-filter-box {
       display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-bottom: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      background: #fff5f5;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .pdf-filter-box .form-group {
+      margin-bottom: 0;
+      flex: 1;
+      min-width: 150px;
     }
 
     .btn-export-pdf {
@@ -261,6 +265,7 @@
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
+      height: 41px;
     }
 
     .btn-export-pdf:hover {
@@ -382,13 +387,13 @@
               <option value="ME">ME</option>
               <option value="SEST/SENAT">SEST/SENAT</option>
               <option value="SEFAZ">SEFAZ</option>
-              <option value="EMLUB/DEFESA CIVIL">EMLUB/DEFESA CIVIL</option>
-              <option value="C.DO VALE">C. DO VALE</option>
+              <option value="SEFAZ RS">SEFAZ RS</option>
+              <option value="EMLURB/DEFESA CIVIL">EMLURB/DEFESA CIVIL</option>
+              <option value="C. DO VALE / EMLURB / D. CIVIL">C. DO VALE / EMLURB / D. CIVIL</option>
               <option value="IPSEMG">IPSEMG</option>
               <option value="RH">RH</option>
-              <option value="RH">DETRAN</option>
+              <option value="DETRAN">DETRAN</option>
               <option value="SEBRAE BA">SEBRAE BA</option>
-            
             </select>
           </div>
 
@@ -425,16 +430,27 @@
 
     <!-- Indicadores -->
     <div class="card">
-      <h2>Estatísticas por Setor</h2>
+      <h2>Estatísticas Gerais por Setor</h2>
       <div class="stats-grid" id="statsContainer"></div>
     </div>
 
-    <!-- Tabela -->
+    <!-- Tabela e Filtro de PDF -->
     <div class="card">
-      <div class="table-actions no-print">
-        <button class="btn-export-pdf" onclick="exportarMesAtualPDF()">📄 Exportar Mês (PDF)</button>
+      <h2>Histórico e Relatório PDF</h2>
+
+      <!-- Filtro de Datas para o PDF -->
+      <div class="pdf-filter-box no-print">
+        <div class="form-group">
+          <label for="pdfDataInicio">Data Inicial (Opcional):</label>
+          <input type="date" id="pdfDataInicio">
+        </div>
+        <div class="form-group">
+          <label for="pdfDataFim">Data Final (Opcional):</label>
+          <input type="date" id="pdfDataFim">
+        </div>
+        <button class="btn-export-pdf" onclick="exportarPDF()">📄 Exportar Relatório (PDF)</button>
       </div>
-      <h2>Histórico de Registros</h2>
+
       <table>
         <thead>
           <tr>
@@ -458,7 +474,10 @@
   const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51bXh1eG9qc2xudWpwc21yZHdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMTk5ODUsImV4cCI6MjEwNDc5NTk4NX0.x9hi6BUpQY1UVPUQElaQGg2sE8H__IRqIy8OD0f2ShQ";
   const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  const setoresValidos = ["MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "EMLUB/DEFESA CIVIL", "C. DO VALE ", "IPSEMG", "DETRAN", "RH", "SEBRAE BA" ];
+  const setoresValidos = [
+    "MOURA", "LIGMINAS", "ME", "SEST/SENAT", "SEFAZ", "SEFAZ RS", 
+    "EMLURB/DEFESA CIVIL", "C. DO VALE / EMLURB / D. CIVIL", "IPSEMG", "DETRAN", "RH", "SEBRAE BA"
+  ];
   let registrosCache = [];
 
   const inputData = document.getElementById("dataRegistro");
@@ -564,7 +583,7 @@
     const { data, error } = await _supabase
       .from('saidas_equipamentos')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('data_registro', { ascending: false });
 
     if (error) {
       mostrarErro("Erro ao carregar registros: " + error.message);
@@ -695,20 +714,30 @@
     });
   }
 
-  // EXPORTAR REGISTROS DO MÊS ATUAL EM PDF (COM RESUMO ESTATÍSTICO)
-  function exportarMesAtualPDF() {
+  // EXPORTAR REGISTROS DE QUALQUER PERÍODO EM PDF
+  function exportarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    const agora = new Date();
-    const anoAtual = agora.getFullYear();
-    const mesAtual = String(agora.getMonth() + 1).padStart(2, '0');
-    const prefixoAnoMes = `${anoAtual}-${mesAtual}`;
+    const dataInicio = document.getElementById("pdfDataInicio").value;
+    const dataFim = document.getElementById("pdfDataFim").value;
 
-    const registrosMes = registrosCache.filter(r => r.data_registro && r.data_registro.startsWith(prefixoAnoMes));
+    let registrosFiltrados = [...registrosCache];
+    let textoSubtitulo = "Período: Todo o Histórico";
 
-    if (registrosMes.length === 0) {
-      alert("Nenhum registro encontrado para o mês atual.");
+    if (dataInicio && dataFim) {
+      registrosFiltrados = registrosFiltrados.filter(r => r.data_registro >= dataInicio && r.data_registro <= dataFim);
+      textoSubtitulo = `Período: ${dataInicio.split('-').reverse().join('/')} até ${dataFim.split('-').reverse().join('/')}`;
+    } else if (dataInicio) {
+      registrosFiltrados = registrosFiltrados.filter(r => r.data_registro >= dataInicio);
+      textoSubtitulo = `Período: A partir de ${dataInicio.split('-').reverse().join('/')}`;
+    } else if (dataFim) {
+      registrosFiltrados = registrosFiltrados.filter(r => r.data_registro <= dataFim);
+      textoSubtitulo = `Período: Até ${dataFim.split('-').reverse().join('/')}`;
+    }
+
+    if (registrosFiltrados.length === 0) {
+      alert("Nenhum registro encontrado para o período selecionado.");
       return;
     }
 
@@ -719,35 +748,35 @@
 
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`Relatório do Mês: ${mesAtual}/${anoAtual}`, 14, 25);
+    doc.text(textoSubtitulo, 14, 25);
 
-    // Cálculos de Estatísticas do Mês
-    const totalMes = registrosMes.length;
-    const contagemMes = {};
-    setoresValidos.forEach(s => contagemMes[s] = 0);
+    // Cálculos de Estatísticas do Período
+    const totalPeriodo = registrosFiltrados.length;
+    const contagemPeriodo = {};
+    setoresValidos.forEach(s => contagemPeriodo[s] = 0);
 
-    registrosMes.forEach(r => {
+    registrosFiltrados.forEach(r => {
       const setorReg = (r.setor || '').trim().toUpperCase();
       const chave = setoresValidos.find(s => s === setorReg);
       if (chave) {
-        contagemMes[chave]++;
+        contagemPeriodo[chave]++;
       } else {
-        if (!contagemMes[setorReg]) contagemMes[setorReg] = 0;
-        contagemMes[setorReg]++;
+        if (!contagemPeriodo[setorReg]) contagemPeriodo[setorReg] = 0;
+        contagemPeriodo[setorReg]++;
       }
     });
 
-    const listaSetoresMes = Array.from(new Set([...setoresValidos, ...Object.keys(contagemMes)]));
+    const listaSetoresPeriodo = Array.from(new Set([...setoresValidos, ...Object.keys(contagemPeriodo)]));
 
     const colunasStats = ["Setor", "Quantidade", "Porcentagem"];
-    const linhasStats = listaSetoresMes.map(setor => {
-      const qtd = contagemMes[setor] || 0;
-      const pct = totalMes > 0 ? ((qtd / totalMes) * 100).toFixed(1) : "0.0";
+    const linhasStats = listaSetoresPeriodo.map(setor => {
+      const qtd = contagemPeriodo[setor] || 0;
+      const pct = totalPeriodo > 0 ? ((qtd / totalPeriodo) * 100).toFixed(1) : "0.0";
       return [setor, qtd.toString(), `${pct}%`];
     });
 
-    // Adiciona linha de total geral ao resumo
-    linhasStats.push(["TOTAL GERAL", totalMes.toString(), "100%"]);
+    // Linha de total geral
+    linhasStats.push(["TOTAL GERAL", totalPeriodo.toString(), "100%"]);
 
     // Tabela 1: Resumo Estatístico por Setor
     doc.setFontSize(12);
@@ -768,7 +797,7 @@
     doc.text("Detalhamento dos Registros", 14, finalYStats);
 
     const colunas = ["Equipamento", "Setor", "Lacre", "Responsável", "Chamado", "Data", "Hora"];
-    const linhas = registrosMes.map(r => [
+    const linhas = registrosFiltrados.map(r => [
       r.equipamento || '-',
       r.setor || '-',
       r.lacre || '-',
@@ -787,7 +816,7 @@
       styles: { fontSize: 8, cellPadding: 2.5 }
     });
 
-    doc.save(`registros_saida_${prefixoAnoMes}.pdf`);
+    doc.save(`relatorio_saida_equipamentos.pdf`);
   }
 
   verificarSessao();
