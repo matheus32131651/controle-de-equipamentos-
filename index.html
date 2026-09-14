@@ -781,10 +781,13 @@
       styles: { fontSize: 8, cellPadding: 2.5 }
     });
 
-    doc.save(`registros_saida_${prefixoAnoMes}.pdf`);
+  doc.save(`registros_saida_${prefixoAnoMes}.pdf`);
   }
 
-  verificarSessao();
+  // Executa assim que o DOM estiver completamente carregado
+  document.addEventListener("DOMContentLoaded", () => {
+    verificarSessao();
+  });
 </script>
 </body>
 </html>
