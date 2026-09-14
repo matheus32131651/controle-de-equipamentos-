@@ -7,7 +7,12 @@
   
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23dc2626'><path d='M20 18c1.1 0 1.99-.9 1.99-2L22 5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 5h16v11H4V5z'/></svg>">
 
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.48.0/dist/umd/supabase.min.js"></script>
+  
+  <!-- jsPDF e AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   
   <style>
     :root {
@@ -32,7 +37,6 @@
       margin: 0 auto;
     }
 
-    /* Estilos da Tela de Login */
     #loginScreen {
       max-width: 400px;
       margin: 80px auto;
@@ -50,7 +54,6 @@
       margin-bottom: 20px;
     }
 
-    /* Top bar com botão Sair */
     .top-bar {
       display: flex;
       justify-content: flex-end;
@@ -238,20 +241,25 @@
       background-color: #fff5f5;
     }
 
-    .btn-print {
-      background-color: #15803d;
+    .table-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .btn-export-pdf {
+      background-color: #dc2626;
       color: white;
       border: none;
       padding: 10px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
-      float: right;
-      margin-bottom: 12px;
     }
 
-    .btn-print:hover {
-      background-color: #166534;
+    .btn-export-pdf:hover {
+      background-color: #b91c1c;
     }
 
     .btn-action {
@@ -332,7 +340,7 @@
     </div>
   </div>
 
-  <!-- CONTEÚDO PRINCIPAL (INICIALMENTE OCULTO) -->
+  <!-- CONTEÚDO PRINCIPAL -->
   <div class="container" id="appContent" style="display: none;">
     
     <div class="top-bar no-print">
@@ -414,7 +422,9 @@
 
     <!-- Tabela -->
     <div class="card">
-      <button class="btn-print no-print" onclick="window.print()">🖨️ Imprimir Relatório</button>
+      <div class="table-actions no-print">
+        <button class="btn-export-pdf" onclick="exportarMesAtualPDF()">📄 Exportar Mês (PDF)</button>
+      </div>
       <h2>Histórico de Registros</h2>
       <table>
         <thead>
@@ -445,7 +455,6 @@
   const inputData = document.getElementById("dataRegistro");
   const inputHora = document.getElementById("horaRegistro");
 
-  // GERENCIAMENTO DE SESSÃO / LOGIN
   async function verificarSessao() {
     const { data: { session } } = await _supabase.auth.getSession();
     if (session) {
@@ -677,7 +686,101 @@
     });
   }
 
-  // Inicializa a validação ao carregar a página
+  // EXPORTAR REGISTROS DO MÊS ATUAL EM PDF (COM RESUMO ESTATÍSTICO)
+  function exportarMesAtualPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const agora = new Date();
+    const anoAtual = agora.getFullYear();
+    const mesAtual = String(agora.getMonth() + 1).padStart(2, '0');
+    const prefixoAnoMes = `${anoAtual}-${mesAtual}`;
+
+    const registrosMes = registrosCache.filter(r => r.data_registro && r.data_registro.startsWith(prefixoAnoMes));
+
+    if (registrosMes.length === 0) {
+      alert("Nenhum registro encontrado para o mês atual.");
+      return;
+    }
+
+    // Título do PDF
+    doc.setFontSize(16);
+    doc.setTextColor(220, 38, 38);
+    doc.text("Controle de Saída de Equipamentos", 14, 18);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Relatório do Mês: ${mesAtual}/${anoAtual}`, 14, 25);
+
+    // Cálculos de Estatísticas do Mês
+    const totalMes = registrosMes.length;
+    const contagemMes = {};
+    setoresValidos.forEach(s => contagemMes[s] = 0);
+
+    registrosMes.forEach(r => {
+      const setorReg = (r.setor || '').trim().toUpperCase();
+      const chave = setoresValidos.find(s => s === setorReg);
+      if (chave) {
+        contagemMes[chave]++;
+      } else {
+        if (!contagemMes[setorReg]) contagemMes[setorReg] = 0;
+        contagemMes[setorReg]++;
+      }
+    });
+
+    const listaSetoresMes = Array.from(new Set([...setoresValidos, ...Object.keys(contagemMes)]));
+
+    const colunasStats = ["Setor", "Quantidade", "Porcentagem"];
+    const linhasStats = listaSetoresMes.map(setor => {
+      const qtd = contagemMes[setor] || 0;
+      const pct = totalMes > 0 ? ((qtd / totalMes) * 100).toFixed(1) : "0.0";
+      return [setor, qtd.toString(), `${pct}%`];
+    });
+
+    // Adiciona linha de total geral ao resumo
+    linhasStats.push(["TOTAL GERAL", totalMes.toString(), "100%"]);
+
+    // Tabela 1: Resumo Estatístico por Setor
+    doc.setFontSize(12);
+    doc.setTextColor(31, 41, 55);
+    doc.text("Resumo de Operações por Setor", 14, 34);
+
+    doc.autoTable({
+      startY: 37,
+      head: [colunasStats],
+      body: linhasStats,
+      headStyles: { fillColor: [75, 85, 99] },
+      alternateRowStyles: { fillColor: [243, 244, 246] },
+      styles: { fontSize: 8, cellPadding: 2 }
+    });
+
+    // Tabela 2: Histórico Detalhado dos Registros
+    const finalYStats = doc.lastAutoTable.finalY + 10;
+    doc.text("Detalhamento dos Registros", 14, finalYStats);
+
+    const colunas = ["Equipamento", "Setor", "Lacre", "Responsável", "Chamado", "Data", "Hora"];
+    const linhas = registrosMes.map(r => [
+      r.equipamento || '-',
+      r.setor || '-',
+      r.lacre || '-',
+      r.responsavel || '-',
+      r.chamado || '-',
+      r.data_registro || '-',
+      r.hora_registro || '-'
+    ]);
+
+    doc.autoTable({
+      startY: finalYStats + 3,
+      head: [colunas],
+      body: linhas,
+      headStyles: { fillColor: [220, 38, 38] },
+      alternateRowStyles: { fillColor: [255, 245, 245] },
+      styles: { fontSize: 8, cellPadding: 2.5 }
+    });
+
+    doc.save(`registros_saida_${prefixoAnoMes}.pdf`);
+  }
+
   verificarSessao();
 </script>
 </body>
